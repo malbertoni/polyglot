@@ -38,7 +38,7 @@ CXXFLAGS += -fno-exceptions -fno-rtti
 
 # optimisation
 
-CXXFLAGS += -O2
+CXXFLAGS += -O3
 CXXFLAGS += -fomit-frame-pointer
 
 # strip

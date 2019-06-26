@@ -690,8 +690,8 @@ static int entry_score(const entry_t * entry) {
 
    ASSERT(entry!=NULL);
 
-   // score = entry->n; // popularity
-   score = entry->sum; // "expectancy"
+   score = entry->n; // popularity
+   //score = entry->sum; // "expectancy"
 
    if (Uniform) score = 1;
 
