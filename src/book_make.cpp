@@ -345,37 +345,15 @@ static void book_insert(const char file_name[], const char leveldb_file_name[]) 
                my_log("book_insert(): illegal move \"%s\" at line %d, column %d\n",string,pgn->move_line,pgn->move_column);
             }
             
-//            if (leveldb_file_name==NULL) {
 
             pos = find_entry(board,move);
 
-//            if (Storage==POLYGLOT) {
-//            Book->entry[pos].n++;
-//            Book->entry[pos].sum += result+1;
-            Book->entry[pos].game_ids->insert(game_nb);
+			Book->entry[pos].n++;
+			Book->entry[pos].sum += result+1;
 
-//            if (Book->entry[pos].n >= COUNT_MAX) {
-//                halve_stats(board->key);
-//            }
-//            }
-//            else {
-//                std::stringstream game_id_stream;
-//                std::string currentValue;
-//                leveldb::Status s = db->Get(leveldb::ReadOptions(), uint64_to_string(board->key), &currentValue);
-//                if (s.ok()) {
-//                    game_id_stream << currentValue;
-//                }
-//                
-//                game_id_stream << game_nb << ",";
-////                for (set<int>::iterator it = Book->entry[pos].game_ids->begin(); it != Book->entry[pos].game_ids->end(); ++it) {
-////                    game_id_stream << *it << ",";
-////                }
-////                writeBatch.Put(uint64_to_string(board->key), game_id_stream.str());
-////                db->Put(writeOptions, uint64_to_string(board->key), game_id_stream.str());
-//                
-//              }
-
-           
+            if (Book->entry[pos].n >= COUNT_MAX) {
+               halve_stats(board->key);
+            }
             move_do(board,move);
             ply++;            
             result = -result;
