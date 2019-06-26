@@ -19,8 +19,6 @@
 
 // constants
 
-static const bool UseNice = false;
-
 static const int StringSize = 4096;
 
 // variables
@@ -121,9 +119,6 @@ void engine_open(engine_t * engine) {
 
       my_dup2(STDOUT_FILENO,STDERR_FILENO);
 
-      // set a low priority
-
-      if (UseNice) nice(+20);
 
       // change the current directory
 
