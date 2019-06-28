@@ -32,12 +32,13 @@ static const int NIL = -1;
 // types
 
 struct entry_t {
-   uint64 key;
-   uint16 move;
-   uint16 n;
-   uint16 sum;
-   uint16 colour;
-   set<int> * game_ids;
+	uint64 key;
+	uint16 move;
+	uint16 n;
+	uint16 sum;
+	uint16 colour;
+	uint16_t elo;
+	set<int> * game_ids;
 };
 
 struct book_t {
@@ -55,6 +56,9 @@ static int MinGame;
 static double MinScore;
 static bool RemoveWhite, RemoveBlack;
 static bool Uniform;
+static int MinElo = 0;
+static int MaxElo = 10000;
+static char *TargetPlayer = NULL;
 
 static enum STORAGE
   {
@@ -178,7 +182,19 @@ void book_make(int argc, char * argv[]) {
 
          my_string_set(&leveldb_file,argv[i]);
          Storage = LEVELDB;
-      } else {
+      } else if (my_string_equal(argv[i], "-player-name")) {
+		  i++;
+		  if (argv[i] == NULL) my_fatal("book_make(): missing name\n");
+		  TargetPlayer = strdup(argv[i]);
+	  } else if (my_string_equal(argv[i], "-min-elo")) {
+		  i++;
+		  if (argv[i] == NULL) my_fatal("book_make(): missing min elo value\n");
+		  MinElo = atoi(argv[i]);
+	  } else if (my_string_equal(argv[i], "-max-elo")) {
+		  i++;
+		  if (argv[i] == NULL) my_fatal("book_make(): missing max elo value\n");
+		  MaxElo = atoi(argv[i]);
+	  } else {
          my_fatal("book_make(): unknown option \"%s\"\n",argv[i]);
       }
    }
@@ -278,7 +294,9 @@ static void book_insert(const char file_name[], const char leveldb_file_name[]) 
    char string[256];
    int move;
    int pos;
+   int elo, blackelo, whiteelo;
    leveldb::WriteOptions writeOptions;
+   char *player;
    
 
    leveldb::DB* db;
@@ -300,11 +318,23 @@ static void book_insert(const char file_name[], const char leveldb_file_name[]) 
    pgn_open(pgn,file_name);
    
    while (pgn_next_game(pgn)) {
-
+	  whiteelo = atoi(pgn->whiteelo);
+	  blackelo = atoi(pgn->blackelo);
       board_start(board);
       ply = 0;
       result = 0;
-
+#if 0
+	  if (TargetPlayer != NULL) {
+		  if (strstr(pgn->white, TargetPlayer) == NULL &&
+			  strstr(pgn->black, TargetPlayer) == NULL) {
+			  printf("game does not have player\n");
+		  }
+		  if (strstr(pgn->white, TargetPlayer))
+			  printf("%s is White\n", pgn->white);
+		  if (strstr(pgn->black, TargetPlayer))
+			  printf("%s is Black\n", pgn->black);
+	  }
+#endif	  
       if (false) {
       } else if (my_string_equal(pgn->result,"1-0")) {
          result = +1;
@@ -344,8 +374,17 @@ static void book_insert(const char file_name[], const char leveldb_file_name[]) 
             if (move == MoveNone || !move_is_legal(move,board)) {
                my_log("book_insert(): illegal move \"%s\" at line %d, column %d\n",string,pgn->move_line,pgn->move_column);
             }
-            
-
+			if (ply % 2 == 0) {
+				elo = whiteelo;
+				player = pgn->white;
+			} else {
+				elo = blackelo;
+				player = pgn->black;
+			}
+			if (elo < MinElo || elo > MaxElo)
+				goto skip;
+			if (TargetPlayer != NULL && strstr(player, TargetPlayer) == NULL)
+				goto skip;
             pos = find_entry(board,move);
 
 			Book->entry[pos].n++;
@@ -355,8 +394,9 @@ static void book_insert(const char file_name[], const char leveldb_file_name[]) 
                halve_stats(board->key);
             }
             move_do(board,move);
-            ply++;            
             result = -result;
+		   skip:
+            ply++;
          }
       }
 
@@ -388,13 +428,6 @@ static void book_insert(const char file_name[], const char leveldb_file_name[]) 
         
             }
             book_clear();
-
-              
-              
-              
-              
-//            db->Write(leveldb::WriteOptions(), &writeBatch);
-//            writeBatch.Clear();
           }
       }
    }
@@ -661,10 +694,17 @@ static bool keep_entry(int pos) {
    entry = &Book->entry[pos];
 
    // if (entry->n == 0) return false;
-   if (entry->n < MinGame) return false;
-
-   if (entry->sum == 0) return false;
-
+   if (entry->n < MinGame) {
+	   printf("too few games\n");
+	   return false;
+   }
+   /*
+	 this doesn't make any sense 
+	  if (entry->sum == 0) {
+	  printf("score too low\n");
+	  return false;
+	  }
+   */
    score = (double(entry->sum) / double(entry->n)) / 2.0;
    ASSERT(score>=0.0&&score<=1.0);
 
